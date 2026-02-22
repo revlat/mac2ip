@@ -17,20 +17,18 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.24'
-
-    - name: Install libpcap
+    - name: Build with Alpine (static binary)
       run: |
-        sudo apt-get update
-        sudo apt-get install -y libpcap-dev
-
-    - name: Build
-      run: |
-        go build -v -o mac2ip .
-        ls -lh mac2ip
+        docker run --rm -v "$PWD":/workspace -w /workspace alpine:latest sh -c '
+          apk add --no-cache go libpcap-dev musl-dev gcc file
+          export CGO_ENABLED=1
+          export CGO_LDFLAGS="-static"
+          go build -v -ldflags "-linkmode external -extldflags \"-static\"" -o mac2ip .
+          ls -lh mac2ip
+          echo "=== Check if static ==="
+          ldd mac2ip 2>&1 || echo "✓ Static binary (no dynamic dependencies)"
+          file mac2ip
+        '
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
@@ -39,42 +37,28 @@ jobs:
         path: mac2ip
 
     - name: Test
-      run: go test -v ./...
+      run: docker run --rm -v "$PWD":/workspace -w /workspace alpine:latest sh -c 'apk add --no-cache go libpcap-dev musl-dev gcc && CGO_ENABLED=1 go test -v ./...'
 
   build-linux-arm64:
-    runs-on: ubuntu-22.04  # Use older Ubuntu for better arm64 package availability
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.24'
+    - name: Set up QEMU for ARM64
+      uses: docker/setup-qemu-action@v3
 
-    - name: Install cross-compilation tools
+    - name: Build with Alpine ARM64 (static binary)
       run: |
-        # Restrict default sources to amd64 only
-        sudo sed -i 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list
-        # Configure ports mirror for arm64 (including security updates)
-        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main universe" | sudo tee /etc/apt/sources.list.d/arm64.list
-        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main universe" | sudo tee -a /etc/apt/sources.list.d/arm64.list
-        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-security main universe" | sudo tee -a /etc/apt/sources.list.d/arm64.list
-        # Add arm64 architecture
-        sudo dpkg --add-architecture arm64
-        sudo apt-get update
-        # Install cross-compiler and libraries
-        sudo apt-get install -y gcc-aarch64-linux-gnu libpcap-dev:arm64
-
-    - name: Build
-      env:
-        GOOS: linux
-        GOARCH: arm64
-        CC: aarch64-linux-gnu-gcc
-        CGO_ENABLED: 1
-      run: |
-        go build -v -o mac2ip .
-        file mac2ip  # Verify it's arm64
-        ls -lh mac2ip
+        docker run --rm --platform linux/arm64 -v "$PWD":/workspace -w /workspace alpine:latest sh -c '
+          apk add --no-cache go libpcap-dev musl-dev gcc file
+          export CGO_ENABLED=1
+          export CGO_LDFLAGS="-static"
+          go build -v -ldflags "-linkmode external -extldflags \"-static\"" -o mac2ip .
+          ls -lh mac2ip
+          echo "=== Check if static and arm64 ==="
+          ldd mac2ip 2>&1 || echo "✓ Static binary (no dynamic dependencies)"
+          file mac2ip
+        '
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
