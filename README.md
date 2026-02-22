@@ -2,7 +2,9 @@
 
 🇬🇧 [English](README.md) | 🇩🇪 [Deutsch](README_DE.md)
 
-Live ARP traffic sniffer for MAC address lookup. Find IP addresses associated with a MAC address in real-time.
+Live ARP traffic sniffer for MAC address lookup. Find IP addresses associated with a MAC address in real-time by monitoring network communication.
+
+**Important:** mac2ip only sees ARP packets sent AFTER you start it. For best results, plug in or power on the device after starting mac2ip.
 
 ## Features
 
@@ -126,13 +128,15 @@ You can configure Npcap to allow non-admin users:
 **Simpler than Wireshark for this task** - No complex UI or filters, just enter a MAC address. Perfect when you don't have access to the DHCP server or router!
 
 ### Finding a Device's IP
-A colleague just plugged in a new device and needs to know its IP:
+A colleague has a new device and needs to know its IP:
 
 ```bash
-# They read the MAC address from the device label
+# 1. Read the MAC address from the device label
+# 2. Start mac2ip FIRST
 mac2ip a1:b2:c3:d4:e5:f6
 
-# Instantly see: [16:34:21] REQ | a1:b2:c3:d4:e5:f6 → 192.168.10.42
+# 3. NOW plug in/power on the device
+# 4. Instantly see: [16:34:21] REQ | a1:b2:c3:d4:e5:f6 → 192.168.10.42
 # Done! Device has IP 192.168.10.42
 ```
 
@@ -145,11 +149,12 @@ mac2ip a1:b2:c3:d4:e5:f6
 A device is on the network but you don't know its IP:
 
 ```bash
-# Check the label, run mac2ip
+# 1. Check the MAC address label
+# 2. Start mac2ip
 mac2ip 00:1a:2b:3c:4d:5e
 
-# Wait a few seconds for network activity
-# → Shows the IP when device communicates
+# 3. Power cycle the device (unplug/replug or reboot)
+# 4. Wait for ARP activity - shows IP when device communicates
 ```
 
 **Common scenarios:**

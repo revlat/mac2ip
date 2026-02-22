@@ -2,7 +2,9 @@
 
 🇬🇧 [English](README.md) | 🇩🇪 [Deutsch](README_DE.md)
 
-Live ARP-Traffic-Sniffer für MAC-Adressen-Lookups. Finde IP-Adressen zu MAC-Adressen in Echtzeit.
+Live ARP-Traffic-Sniffer für MAC-Adressen-Lookups. Finde IP-Adressen zu MAC-Adressen in Echtzeit durch Beobachtung der Netzwerk-Kommunikation.
+
+**Wichtig:** mac2ip sieht nur ARP-Pakete, die NACH dem Start gesendet werden. Für beste Ergebnisse das Gerät nach dem Start von mac2ip einstecken oder einschalten.
 
 ## Features
 
@@ -126,13 +128,15 @@ Du kannst Npcap so konfigurieren, dass normale User es nutzen können:
 **Einfacher als Wireshark für diese Aufgabe** - Keine komplexe UI oder Filter, einfach MAC-Adresse eingeben. Perfekt wenn du keinen Zugriff auf DHCP-Server oder Router hast!
 
 ### IP eines Geräts finden
-Ein Kollege hat gerade ein neues Gerät angeschlossen und braucht die IP:
+Ein Kollege hat ein neues Gerät und braucht die IP:
 
 ```bash
-# MAC-Adresse vom Geräte-Aufkleber ablesen
+# 1. MAC-Adresse vom Geräte-Aufkleber ablesen
+# 2. mac2ip ZUERST starten
 mac2ip a1:b2:c3:d4:e5:f6
 
-# Sofort sichtbar: [16:34:21] REQ | a1:b2:c3:d4:e5:f6 → 192.168.10.42
+# 3. JETZT Gerät einstecken/einschalten
+# 4. Sofort sichtbar: [16:34:21] REQ | a1:b2:c3:d4:e5:f6 → 192.168.10.42
 # Fertig! Gerät hat IP 192.168.10.42
 ```
 
@@ -145,11 +149,12 @@ mac2ip a1:b2:c3:d4:e5:f6
 Ein Gerät ist im Netzwerk, aber du kennst die IP nicht:
 
 ```bash
-# Aufkleber checken, mac2ip starten
+# 1. MAC-Adresse vom Aufkleber checken
+# 2. mac2ip starten
 mac2ip 00:1a:2b:3c:4d:5e
 
-# Ein paar Sekunden auf Netzwerk-Aktivität warten
-# → Zeigt die IP sobald das Gerät kommuniziert
+# 3. Gerät neu starten (ausstecken/einstecken oder rebooten)
+# 4. Auf ARP-Aktivität warten - zeigt IP sobald das Gerät kommuniziert
 ```
 
 **Typische Szenarien:**
