@@ -1,5 +1,5 @@
-# This workflow will build a golang project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+# Build mac2ip for all supported platforms
+# Note: Only native builds work due to CGo dependency (gopacket/pcap)
 
 name: Go
 
@@ -12,13 +12,8 @@ on:
     branches: [ "main" ]
 
 jobs:
-
-  build:
+  build-linux-amd64:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        goos: [linux, windows, darwin]
-        goarch: [amd64, arm64]
     steps:
     - uses: actions/checkout@v4
 
@@ -27,32 +22,154 @@ jobs:
       with:
         go-version: '1.24'
 
-    - name: Build
-      env:
-        GOOS: ${{ matrix.goos }}
-        GOARCH: ${{ matrix.goarch }}
+    - name: Install libpcap
       run: |
-        if [ "${{ matrix.goos }}" == "windows" ]; then
-          OUTPUT_NAME="mac2ip.exe"
-        else
-          OUTPUT_NAME="mac2ip"
-        fi
-        go build -v -o ${OUTPUT_NAME} .
-        ls -lh ${OUTPUT_NAME}
+        sudo apt-get update
+        sudo apt-get install -y libpcap-dev
 
-    - name: Upload artifacts
+    - name: Build
+      run: |
+        go build -v -o mac2ip .
+        ls -lh mac2ip
+
+    - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: mac2ip-${{ matrix.goos }}-${{ matrix.goarch }}
-        path: mac2ip${{ matrix.goos == 'windows' && '.exe' || '' }}
+        name: mac2ip-linux-amd64
+        path: mac2ip
 
     - name: Test
       run: go test -v ./...
 
+  build-linux-arm64:
+    runs-on: ubuntu-22.04  # Use older Ubuntu for better arm64 package availability
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.24'
+
+    - name: Install cross-compilation tools
+      run: |
+        # Restrict default sources to amd64 only
+        sudo sed -i 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list
+        # Configure ports mirror for arm64 (including security updates)
+        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main universe" | sudo tee /etc/apt/sources.list.d/arm64.list
+        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main universe" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-security main universe" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+        # Add arm64 architecture
+        sudo dpkg --add-architecture arm64
+        sudo apt-get update
+        # Install cross-compiler and libraries
+        sudo apt-get install -y gcc-aarch64-linux-gnu libpcap-dev:arm64
+
+    - name: Build
+      env:
+        GOOS: linux
+        GOARCH: arm64
+        CC: aarch64-linux-gnu-gcc
+        CGO_ENABLED: 1
+      run: |
+        go build -v -o mac2ip .
+        file mac2ip  # Verify it's arm64
+        ls -lh mac2ip
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: mac2ip-linux-arm64
+        path: mac2ip
+
+  build-macos-arm64:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.24'
+
+    - name: Install libpcap
+      run: brew install libpcap
+
+    - name: Build
+      run: |
+        LIBPCAP_PREFIX=$(brew --prefix libpcap)
+        export CGO_CFLAGS="-I${LIBPCAP_PREFIX}/include"
+        export CGO_LDFLAGS="-L${LIBPCAP_PREFIX}/lib"
+        go build -v -o mac2ip .
+        ls -lh mac2ip
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: mac2ip-darwin-arm64
+        path: mac2ip
+
+  build-macos-amd64:
+    runs-on: macos-12  # Intel runner (may be slow to start)
+    timeout-minutes: 20  # Prevent hanging forever
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.24'
+
+    - name: Install libpcap
+      run: brew install libpcap
+
+    - name: Build
+      run: |
+        LIBPCAP_PREFIX=$(brew --prefix libpcap)
+        export CGO_CFLAGS="-I${LIBPCAP_PREFIX}/include"
+        export CGO_LDFLAGS="-L${LIBPCAP_PREFIX}/lib"
+        go build -v -o mac2ip .
+        ls -lh mac2ip
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: mac2ip-darwin-amd64
+        path: mac2ip
+
+  build-windows-amd64:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.24'
+
+    - name: Install Npcap SDK
+      run: |
+        Invoke-WebRequest -Uri "https://npcap.com/dist/npcap-sdk-1.13.zip" -OutFile "npcap-sdk.zip"
+        Expand-Archive -Path npcap-sdk.zip -DestinationPath npcap-sdk
+        echo "CGO_ENABLED=1" >> $env:GITHUB_ENV
+        echo "CGO_CFLAGS=-I$(Get-Location)\npcap-sdk\Include" >> $env:GITHUB_ENV
+        echo "CGO_LDFLAGS=-L$(Get-Location)\npcap-sdk\Lib\x64" >> $env:GITHUB_ENV
+
+    - name: Build
+      run: |
+        go build -v -o mac2ip.exe .
+        dir mac2ip.exe
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: mac2ip-windows-amd64
+        path: mac2ip.exe
+
   release:
-    needs: build
+    needs: [build-linux-amd64, build-linux-arm64, build-macos-arm64, build-macos-amd64, build-windows-amd64]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') && (success() || failure())  # Run even if macOS amd64 fails
     permissions:
       contents: write
     steps:
@@ -66,14 +183,20 @@ jobs:
     - name: Prepare release files
       run: |
         mkdir release
-        for dir in artifacts/mac2ip-*; do
-          platform=$(basename "$dir")
-          if [[ "$platform" == *"windows"* ]]; then
-            cd "$dir" && zip "../../release/${platform}.zip" mac2ip.exe && cd -
-          else
-            cd "$dir" && tar -czf "../../release/${platform}.tar.gz" mac2ip && cd -
-          fi
-        done
+        # Package Linux amd64
+        cd artifacts/mac2ip-linux-amd64 && tar -czf ../../release/mac2ip-linux-amd64.tar.gz mac2ip && cd -
+        # Package Linux arm64 (if available)
+        if [ -d "artifacts/mac2ip-linux-arm64" ]; then
+          cd artifacts/mac2ip-linux-arm64 && tar -czf ../../release/mac2ip-linux-arm64.tar.gz mac2ip && cd -
+        fi
+        # Package macOS arm64
+        cd artifacts/mac2ip-darwin-arm64 && tar -czf ../../release/mac2ip-darwin-arm64.tar.gz mac2ip && cd -
+        # Package macOS amd64 (if available)
+        if [ -d "artifacts/mac2ip-darwin-amd64" ]; then
+          cd artifacts/mac2ip-darwin-amd64 && tar -czf ../../release/mac2ip-darwin-amd64.tar.gz mac2ip && cd -
+        fi
+        # Package Windows
+        cd artifacts/mac2ip-windows-amd64 && zip ../../release/mac2ip-windows-amd64.zip mac2ip.exe && cd -
         ls -lh release/
 
     - name: Create Release
