@@ -16,6 +16,19 @@ Live ARP-Traffic-Sniffer für MAC-Adressen-Lookups. Finde IP-Adressen zu MAC-Adr
 
 ## Installation
 
+**Empfohlen:** Aus Quellcode bauen für beste Kompatibilität und Performance. Vorkompilierte Binaries sind auch verfügbar und sollten auf den meisten Systemen funktionieren.
+
+### Aus Quellcode bauen (Empfohlen)
+
+```bash
+git clone https://github.com/revlat/mac2ip.git
+cd mac2ip
+make build
+sudo mv mac2ip /usr/local/bin/
+```
+
+Selbst-Bauen stellt sicher, dass das Binary für dein spezifisches System optimiert ist und deine installierte libpcap-Version nutzt.
+
 ### Download Release
 
 Lade vorkompilierte Binaries von [Releases](https://github.com/revlat/mac2ip/releases):
@@ -29,14 +42,6 @@ sudo mv mac2ip /usr/local/bin/
 # Windows (PowerShell)
 Invoke-WebRequest -Uri https://github.com/revlat/mac2ip/releases/latest/download/mac2ip-windows-amd64.zip -OutFile mac2ip.zip
 Expand-Archive mac2ip.zip
-```
-
-### Build from Source
-
-```bash
-git clone https://github.com/revlat/mac2ip.git
-cd mac2ip
-make build
 ```
 
 ## Verwendung

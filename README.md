@@ -16,6 +16,19 @@ Live ARP traffic sniffer for MAC address lookup. Find IP addresses associated wi
 
 ## Installation
 
+**Recommended:** Build from source for best compatibility and performance. Pre-built binaries are also available and should work on most systems.
+
+### Build from Source (Recommended)
+
+```bash
+git clone https://github.com/revlat/mac2ip.git
+cd mac2ip
+make build
+sudo mv mac2ip /usr/local/bin/
+```
+
+Building from source ensures the binary is optimized for your specific system and uses your installed libpcap version.
+
 ### Download Release
 
 Download pre-built binaries from [Releases](https://github.com/revlat/mac2ip/releases):
@@ -29,14 +42,6 @@ sudo mv mac2ip /usr/local/bin/
 # Windows (PowerShell)
 Invoke-WebRequest -Uri https://github.com/revlat/mac2ip/releases/latest/download/mac2ip-windows-amd64.zip -OutFile mac2ip.zip
 Expand-Archive mac2ip.zip
-```
-
-### Build from Source
-
-```bash
-git clone https://github.com/revlat/mac2ip.git
-cd mac2ip
-make build
 ```
 
 ## Usage
