@@ -1,0 +1,27 @@
+# Binaries
+mac2ip.exe
+mac2ip
+main
+*.exe
+
+# Editor configs
+*.sublime-project
+*.sublime-workspace
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+*.test
+*.out
+vendor/
+
+# Claude
+.claude/
+.mcp.json
+
+# Build
+build/

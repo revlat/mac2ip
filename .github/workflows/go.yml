@@ -1,0 +1,83 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: Go
+
+on:
+  push:
+    branches: [ "main" ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, windows, darwin]
+        goarch: [amd64, arm64]
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.24'
+
+    - name: Build
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+      run: |
+        if [ "${{ matrix.goos }}" == "windows" ]; then
+          OUTPUT_NAME="mac2ip.exe"
+        else
+          OUTPUT_NAME="mac2ip"
+        fi
+        go build -v -o ${OUTPUT_NAME} .
+        ls -lh ${OUTPUT_NAME}
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: mac2ip-${{ matrix.goos }}-${{ matrix.goarch }}
+        path: mac2ip${{ matrix.goos == 'windows' && '.exe' || '' }}
+
+    - name: Test
+      run: go test -v ./...
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Prepare release files
+      run: |
+        mkdir release
+        for dir in artifacts/mac2ip-*; do
+          platform=$(basename "$dir")
+          if [[ "$platform" == *"windows"* ]]; then
+            cd "$dir" && zip "../../release/${platform}.zip" mac2ip.exe && cd -
+          else
+            cd "$dir" && tar -czf "../../release/${platform}.tar.gz" mac2ip && cd -
+          fi
+        done
+        ls -lh release/
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: release/*
+        generate_release_notes: true
