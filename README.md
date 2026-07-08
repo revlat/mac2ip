@@ -62,9 +62,16 @@ sudo mac2ip dd:ee          # Matches aa:bb:cc:dd:ee:ff
 sudo mac2ip 00:1a:2b       # Find by vendor prefix
 ```
 
-**Specify interface:**
+**List available interfaces:**
+```bash
+mac2ip --list
+```
+
+**Specify interface** (by name, index from `--list`, or description substring):
 ```bash
 sudo mac2ip -i eth0 aa:bb:cc:dd:ee:ff
+sudo mac2ip -i 2 aa:bb:cc:dd:ee:ff          # by index
+sudo mac2ip -i "Ethernet" aa:bb:cc:dd:ee:ff # by description (handy on Windows)
 ```
 
 **Help:**
@@ -100,6 +107,22 @@ Windows typically **requires Administrator privileges** for packet capture.
   ```cmd
   .\mac2ip.exe aa:bb:cc:dd:ee:ff
   ```
+
+**Choosing the right adapter on Windows**
+
+On Windows, Npcap reports interfaces as opaque device paths like
+`\Device\NPF_{GUID}` rather than friendly names. Use `--list` to see all
+adapters with their descriptions and IP addresses, then select one by index or
+by a part of its description:
+
+```cmd
+.\mac2ip.exe --list
+.\mac2ip.exe -i 2 aa:bb:cc:dd:ee:ff
+.\mac2ip.exe -i "Ethernet" aa:bb:cc:dd:ee:ff
+```
+
+Auto-detection (no `-i`) skips loopback and virtual/APIPA adapters and prefers
+the interface with a real IPv4 address.
 
 **Optional: Non-Admin Access (Advanced)**
 
